@@ -26,7 +26,7 @@ export default function HttpDebug() {
 
   return (
     <>
-      <title>HTTP调试 - NapCat WebUI</title>
+      <title>HTTP调试 - Nyarugram Adapter WebUI</title>
       <div className="w-full h-[calc(100%-3.6rem)] flex items-stretch">
         <OneBotApiNavList
           data={oneBotHttpApi}

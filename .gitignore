@@ -23,8 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 
-# NPM LOCK files
-package-lock.json
+# Alternate package manager lock files
 yarn.lock
 pnpm-lock.yaml
 

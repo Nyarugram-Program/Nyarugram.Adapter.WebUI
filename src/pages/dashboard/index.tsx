@@ -1,11 +1,9 @@
-import { Card, CardBody } from '@nextui-org/card'
 import { useRequest } from 'ahooks'
 import { useCallback, useEffect, useState } from 'react'
 import { useRef } from 'react'
 import toast from 'react-hot-toast'
 
 import NetworkItemDisplay from '@/components/display_network_item'
-import Hitokoto from '@/components/hitokoto'
 import QQInfoCard from '@/components/qq_info_card'
 import SystemInfo from '@/components/system_info'
 import SystemStatusDisplay from '@/components/system_status_display'
@@ -95,7 +93,7 @@ const DashboardIndexPage: React.FC = () => {
 
   return (
     <>
-      <title>基础信息 - NapCat WebUI</title>
+      <title>基础信息 - Nyarugram Adapter WebUI</title>
       <section className="w-full p-2 md:p-4 md:max-w-[1000px] mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
           <div className="flex flex-col gap-2">
@@ -105,11 +103,6 @@ const DashboardIndexPage: React.FC = () => {
           <SystemStatusCard setArchInfo={setArchInfo} />
         </div>
         <Networks />
-        <Card className="bg-opacity-60 shadow-sm shadow-danger-50">
-          <CardBody>
-            <Hitokoto />
-          </CardBody>
-        </Card>
       </section>
     </>
   )

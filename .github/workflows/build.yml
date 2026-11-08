@@ -7,7 +7,7 @@ on:
     workflow_dispatch:
 
 jobs:
-    Build-NextNapCatWebUI:
+    Build-NyarugramAdapterWebUI:
         runs-on: ubuntu-latest
         steps:
           - name: Clone Main Repository
@@ -27,15 +27,22 @@ jobs:
             with:
               node-version: 20.X
 
-          - name: Build NextNapCatWebUI
+          - name: Install dependencies
+            run: npm ci
+
+          - name: Lint and type check
             run: |
-              npm install
-              npm run webui:build
+              npm run webui:lint
+              npm run webui:typecheck
+              npm run webui:test
+
+          - name: Build NyarugramAdapterWebUI
+            run: npm run webui:build
 
           - name: Upload Artifact
             uses: actions/upload-artifact@v4
             with:
-              name: NextNapCatWebUI
+              name: NyarugramAdapterWebUI
               path: dist
 
           - name: Install zip
@@ -43,14 +50,14 @@ jobs:
 
           - name: Compress subdirectories
             run: |
-              zip -q -r NextNapCatWebUI.zip dist/*
+              zip -q -r NyarugramAdapterWebUI.zip dist/*
 
           - name: Create Release and Upload Artifacts
             if: contains(github.event.head_commit.message, 'release')
             uses: softprops/action-gh-release@v1
             with:
-              name: NextNapCatWebUI-v${{ env.version }}
+              name: NyarugramAdapterWebUI-v${{ env.version }}
               tag_name: v${{ env.version }}
               token: ${{ secrets.TOKEN }}
               files: |
-                NextNapCatWebUI.zip
+                NyarugramAdapterWebUI.zip

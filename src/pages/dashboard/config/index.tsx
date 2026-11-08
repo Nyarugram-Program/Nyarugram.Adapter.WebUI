@@ -8,7 +8,6 @@ import { useMediaQuery } from 'react-responsive'
 import key from '@/const/key'
 
 import useConfig from '@/hooks/use-config'
-import useMusic from '@/hooks/use-music'
 
 import OneBotConfigCard from './onebot'
 import WebUIConfigCard from './webui'
@@ -47,7 +46,7 @@ export default function ConfigPage() {
     key.customIcons,
     {}
   )
-  const { setListId, listId } = useMusic()
+  const [listId, setListId] = useLocalStorage(key.musicID, '')
   const resetOneBot = () => {
     setOnebotValue('musicSignUrl', config.musicSignUrl)
     setOnebotValue('enableLocalFile2Url', config.enableLocalFile2Url)
@@ -60,9 +59,9 @@ export default function ConfigPage() {
     setWebuiValue('background', b64img)
   }
 
-  const onOneBotSubmit = handleOnebotSubmit((data) => {
+  const onOneBotSubmit = handleOnebotSubmit(async (data) => {
     try {
-      saveConfigWithoutNetwork(data)
+      await saveConfigWithoutNetwork(data)
       toast.success('保存成功')
     } catch (error) {
       const msg = (error as Error).message

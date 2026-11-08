@@ -1,28 +1,41 @@
 import { Button } from '@nextui-org/button'
 import { Card, CardBody } from '@nextui-org/card'
 import { Input } from '@nextui-org/input'
-import { useLocalStorage } from '@uidotdev/usehooks'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-
-import key from '@/const/key'
 
 import ChatInputModal from '@/components/chat_input/modal'
 import OneBotMessageList from '@/components/onebot/message_list'
 import OneBotSendModal from '@/components/onebot/send_modal'
 import WSStatus from '@/components/onebot/ws_status'
 
+import useInstance from '@/hooks/use-instance'
 import { useWebSocketDebug } from '@/hooks/use-websocket-debug'
 
+import {
+  getOneBotBusinessToken,
+  getOneBotBusinessUrl,
+  setOneBotBusinessToken,
+  setOneBotBusinessUrl
+} from '@/utils/onebot-debug'
+
 export default function WSDebug() {
-  const [url] = useLocalStorage(key.storeURL, 'http://127.0.0.1:6099')
-  const defaultWsUrl = url.replace('http', 'ws').replace(':6099', ':3000')
+  const { instance } = useInstance()
+  const instanceId = instance?.id ?? ''
   const [socketConfig, setSocketConfig] = useState({
-    url: defaultWsUrl,
-    token: ''
+    url: instance?.eventUrl || getOneBotBusinessUrl(instanceId),
+    token: getOneBotBusinessToken(instanceId)
   })
   const [inputUrl, setInputUrl] = useState(socketConfig.url)
   const [inputToken, setInputToken] = useState(socketConfig.token)
+
+  useEffect(() => {
+    const nextUrl = instance?.eventUrl || getOneBotBusinessUrl(instanceId)
+    const nextToken = getOneBotBusinessToken(instanceId)
+    setSocketConfig({ url: nextUrl, token: nextToken })
+    setInputUrl(nextUrl)
+    setInputToken(nextToken)
+  }, [instance?.eventUrl, instanceId])
 
   const { sendMessage, readyState, FilterMessagesType, filteredMessages } =
     useWebSocketDebug(socketConfig.url, socketConfig.token)
@@ -32,15 +45,17 @@ export default function WSDebug() {
       toast.error('WebSocket URL 不合法')
       return
     }
+    setOneBotBusinessUrl(instanceId, inputUrl.trim())
+    setOneBotBusinessToken(instanceId, inputToken.trim())
     setSocketConfig({
-      url: inputUrl,
-      token: inputToken
+      url: inputUrl.trim(),
+      token: inputToken.trim()
     })
-  }, [inputUrl, inputToken])
+  }, [inputUrl, inputToken, instanceId])
 
   return (
     <>
-      <title>Websocket调试 - NapCat WebUI</title>
+      <title>Websocket调试 - Nyarugram Adapter WebUI</title>
       <div className="h-[calc(100vh-4rem)] overflow-hidden flex flex-col">
         <Card className="mx-2 mt-2 flex-shrink-0 bg-opacity-50 backdrop-blur-sm">
           <CardBody className="gap-2">
@@ -51,7 +66,7 @@ export default function WSDebug() {
                 type="text"
                 value={inputUrl}
                 onChange={(e) => setInputUrl(e.target.value)}
-                placeholder="输入 WebSocket URL"
+                placeholder="显式输入 OneBot WebSocket 地址"
               />
               <Input
                 className="col-span-2"

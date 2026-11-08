@@ -1,12 +1,14 @@
 {
-  "name": "napcat-webui",
+  "name": "nyarugram-adapter-webui",
   "private": true,
-  "version": "0.0.6",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "webui:dev": "vite",
-    "webui:build": "tsc && vite build",
-    "webui:lint": "eslint -c eslint.config.mjs ./src/**/**/*.{ts,tsx} --fix",
+    "webui:build": "npm run webui:typecheck && vite build",
+    "webui:typecheck": "tsc --noEmit",
+    "webui:test": "vitest run",
+    "webui:lint": "eslint -c eslint.config.mjs ./src/**/**/*.{ts,tsx}",
     "webui:preview": "vite preview",
     "prepare": "husky",
     "lint-staged": "lint-staged"
@@ -78,6 +80,8 @@
     "@commitlint/config-conventional": "^19.6.0",
     "@eslint/js": "^9.17.0",
     "@react-types/shared": "^3.26.0",
+    "@testing-library/dom": "10.4.0",
+    "@testing-library/react": "16.1.0",
     "@trivago/prettier-plugin-sort-imports": "^5.2.0",
     "@types/event-source-polyfill": "^1.0.5",
     "@types/fabric": "^5.3.9",
@@ -100,13 +104,15 @@
     "eslint-plugin-unused-imports": "4.1.4",
     "globals": "^15.14.0",
     "husky": "^9.1.7",
+    "jsdom": "25.0.1",
     "lint-staged": "^15.2.11",
     "postcss": "8.4.49",
     "prettier": "3.4.2",
     "typescript": "5.7.2",
     "vite": "^6.0.5",
     "vite-plugin-static-copy": "^2.2.0",
-    "vite-tsconfig-paths": "^5.1.4"
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "2.1.8"
   },
   "lint-staged": {
     "src/**/*.{js,jsx,ts,tsx,json}": [

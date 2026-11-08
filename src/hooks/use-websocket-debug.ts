@@ -27,6 +27,7 @@ export function useWebSocketDebug(url: string, token: string) {
       try {
         const data = JSON.parse(event.data)
         messageHistory.unshift(data)
+        if (messageHistory.length > 500) messageHistory.splice(500)
       } catch (error) {
         toast.error('WebSocket 消息解析失败')
       }
@@ -39,8 +40,10 @@ export function useWebSocketDebug(url: string, token: string) {
       console.error('WebSocket error:', event)
     },
     onOpen: () => {
-      messageHistory.splice(0, messageHistory.length)
-    }
+      // 保留历史以支持断线恢复审查；实例切换时由页面卸载关闭连接。
+    },
+    reconnectInterval: 3000,
+    shouldReconnect: () => true
   })
 
   const _sendMessage = (msg: string) => {

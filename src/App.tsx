@@ -1,16 +1,19 @@
-import { useLocalStorage } from '@uidotdev/usehooks'
-import { Suspense, lazy, useEffect } from 'react'
+import { Suspense, lazy } from 'react'
 import { Provider } from 'react-redux'
-import { Route, Routes, useNavigate } from 'react-router-dom'
-
-import key from '@/const/key'
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useSearchParams
+} from 'react-router-dom'
 
 import PageBackground from '@/components/page_background'
 import PageLoading from '@/components/page_loading'
 import Toaster from '@/components/toaster'
 
 import DialogProvider from '@/contexts/dialog'
-import AudioProvider from '@/contexts/songs'
+import { InstanceProvider } from '@/contexts/instance'
 
 import useAuth from '@/hooks/auth'
 
@@ -19,20 +22,21 @@ import store from '@/store'
 const WebLoginPage = lazy(() => import('@/pages/web_login'))
 const IndexPage = lazy(() => import('@/pages/index'))
 const QQLoginPage = lazy(() => import('@/pages/qq_login'))
+const InstancesPage = lazy(() => import('@/pages/instances'))
 
 function App() {
   return (
     <DialogProvider>
       <Provider store={store}>
-        <PageBackground />
-        <Toaster />
-        <AudioProvider>
+        <InstanceProvider>
+          <PageBackground />
+          <Toaster />
           <Suspense fallback={<PageLoading />}>
             <AuthChecker>
               <AppRoutes />
             </AuthChecker>
           </Suspense>
-        </AudioProvider>
+        </InstanceProvider>
       </Provider>
     </DialogProvider>
   )
@@ -40,30 +44,28 @@ function App() {
 
 function AuthChecker({ children }: { children: React.ReactNode }) {
   const { isAuth } = useAuth()
-  const [storeURL] = useLocalStorage(key.storeURL)
-  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const location = useLocation()
 
-  const isStoreURLInvalid =
-    !!storeURL && storeURL !== 'http://' && storeURL !== 'https://'
+  // 登录页和实例登记页必须在未认证时可访问；否则 /web_login 会重定向到自身。
+  if (
+    isAuth ||
+    location.pathname === '/instances' ||
+    location.pathname === '/web_login'
+  ) {
+    return <>{children}</>
+  }
 
-  useEffect(() => {
-    if (!isAuth || !isStoreURLInvalid) {
-      const search = new URLSearchParams(window.location.search)
-      const token = search.get('token')
-      const back = search.get('back') || ''
-      let url = '/web_login'
+  const token = searchParams.get('token')
+  const back = searchParams.get('back') ?? ''
+  const query = new URLSearchParams()
 
-      if (token && isStoreURLInvalid) {
-        url += `?token=${token}`
-      }
-      if (back) {
-        url += `&back=${back}`
-      }
-      navigate(url, { replace: true })
-    }
-  }, [isAuth, storeURL, navigate])
+  if (token) query.set('token', token)
+  if (back) query.set('back', back)
 
-  return <>{children}</>
+  const suffix = query.size > 0 ? `?${query.toString()}` : ''
+
+  return <Navigate replace to={`/web_login${suffix}`} />
 }
 
 function AppRoutes() {
@@ -72,6 +74,7 @@ function AppRoutes() {
       <Route element={<IndexPage />} path="/*" />
       <Route element={<QQLoginPage />} path="/qq_login" />
       <Route element={<WebLoginPage />} path="/web_login" />
+      <Route element={<InstancesPage />} path="/instances" />
     </Routes>
   )
 }

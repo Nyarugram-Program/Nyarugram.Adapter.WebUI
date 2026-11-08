@@ -9,7 +9,7 @@ import monaco from '@/monaco'
 loader.config({
   monaco,
   paths: {
-    vs: '/monaco-editor/min/vs'
+    vs: `${import.meta.env.BASE_URL}monaco-editor/min/vs`
   }
 })
 

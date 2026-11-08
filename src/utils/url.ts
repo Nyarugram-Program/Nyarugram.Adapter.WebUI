@@ -1,6 +1,8 @@
 import { AxiosResponse } from 'axios'
 
-import key from '@/const/key'
+import { selectActiveInstance } from '@/store/modules/instances'
+
+import store from '@/store'
 
 /**
  * 打开链接
@@ -20,10 +22,21 @@ export function openUrl(url: string, newTab = true) {
  * @param path 路径
  */
 export const getFullServerUrl = (path: string) => {
-  let _storeURL =
-    localStorage.getItem(key.storeURL) ?? '"http://localhost:6099"'
-  _storeURL = JSON.parse(_storeURL)
-  return _storeURL + path
+  const activeInstance = selectActiveInstance(store.getState())
+
+  if (!activeInstance) {
+    throw new Error('尚未登记适配器实例')
+  }
+  if (activeInstance.managementKind !== 'napcat') {
+    throw new Error('当前实例不是 NapCat 管理模式')
+  }
+  if (!activeInstance.managementUrl) {
+    throw new Error('实例未配置 NapCat 管理地址')
+  }
+
+  const storeURL = activeInstance.managementUrl
+
+  return `${storeURL.replace(/\/+$/, '')}${path.startsWith('/') ? path : `/${path}`}`
 }
 
 /**

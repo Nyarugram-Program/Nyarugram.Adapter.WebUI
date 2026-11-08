@@ -1,13 +1,27 @@
 import { EventSourcePolyfill } from 'event-source-polyfill'
 
 import { LogLevel } from '@/const/enum'
+import { selectActiveInstance } from '@/store/modules/instances'
+import store from '@/store'
 
+import { getNapcatToken } from '@/utils/instance-secrets'
 import { serverRequest } from '@/utils/request'
 import { getFullServerUrl } from '@/utils/url'
 
 export interface Log {
   level: LogLevel
   message: string
+}
+
+const activeNapcatToken = () => {
+  const activeInstance = selectActiveInstance(store.getState())
+  if (!activeInstance) throw new Error('尚未登记适配器实例')
+  if (activeInstance.managementKind !== 'napcat') {
+    throw new Error('当前实例不是 NapCat 管理模式')
+  }
+  const token = getNapcatToken(activeInstance.id)
+  if (!token) throw new Error('未登录')
+  return token
 }
 
 export default class WebUIManager {
@@ -51,11 +65,7 @@ export default class WebUIManager {
   }
 
   public static getRealTimeLogs(writer: (data: Log[]) => void) {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      throw new Error('未登录')
-    }
-    const _token = JSON.parse(token)
+    const _token = activeNapcatToken()
     const eventSource = new EventSourcePolyfill(
       getFullServerUrl('/api/Log/GetLogRealTime'),
       {
@@ -86,11 +96,7 @@ export default class WebUIManager {
   }
 
   public static getSystemStatus(writer: (data: SystemStatus) => void) {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      throw new Error('未登录')
-    }
-    const _token = JSON.parse(token)
+    const _token = activeNapcatToken()
     const eventSource = new EventSourcePolyfill(
       getFullServerUrl('/api/base/GetSysStatusRealTime'),
       {

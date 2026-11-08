@@ -82,7 +82,7 @@ const HistoryLogs: React.FC<HistoryLogsProps> = (props) => {
 
   return (
     <>
-      <title>历史日志 - NapCat WebUI</title>
+      <title>历史日志 - Nyarugram Adapter WebUI</title>
       <Card className="max-w-full h-full bg-opacity-50 backdrop-blur-sm">
         <CardHeader className="flex-row justify-start gap-3">
           <Select

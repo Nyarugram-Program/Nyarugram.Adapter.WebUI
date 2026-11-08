@@ -5,6 +5,7 @@ import { motion } from 'motion/react'
 import React from 'react'
 import { IoMdLogOut } from 'react-icons/io'
 import { MdDarkMode, MdLightMode } from 'react-icons/md'
+import { useNavigate } from 'react-router-dom'
 
 import useAuth from '@/hooks/auth'
 import useDialog from '@/hooks/use-dialog'
@@ -12,6 +13,8 @@ import { useTheme } from '@/hooks/use-theme'
 
 import logo from '@/assets/images/logo.png'
 import type { MenuItem } from '@/config/site'
+
+import InstanceSwitcher from '../instance/switcher'
 
 import { title } from '../primitives'
 import Menus from './menus'
@@ -25,12 +28,16 @@ const SideBar: React.FC<SideBarProps> = (props) => {
   const { open, items } = props
   const { toggleTheme, isDark } = useTheme()
   const { revokeAuth } = useAuth()
+  const navigate = useNavigate()
   const dialog = useDialog()
   const onRevokeAuth = () => {
     dialog.confirm({
       title: '退出登录',
-      content: '确定要退出登录吗？',
-      onConfirm: revokeAuth
+      content: '确定要退出当前实例的登录吗？其他实例的会话不受影响。',
+      onConfirm: async () => {
+        await revokeAuth()
+        navigate('/web_login', { replace: true })
+      }
     })
   }
   return (
@@ -60,10 +67,11 @@ const SideBar: React.FC<SideBarProps> = (props) => {
               '!text-2xl'
             )}
           >
-            WebUI
+            Adapter
           </div>
         </div>
         <div className="overflow-y-auto flex flex-col flex-1 px-4">
+          <InstanceSwitcher />
           <Menus items={items} />
           <div className="mt-auto mb-10 md:mb-0">
             <Button

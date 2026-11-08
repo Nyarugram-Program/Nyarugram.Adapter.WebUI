@@ -2,23 +2,29 @@ import { Button } from '@nextui-org/button'
 import { Card, CardBody, CardHeader } from '@nextui-org/card'
 import { Input } from '@nextui-org/input'
 import { Snippet } from '@nextui-org/snippet'
-import { useLocalStorage } from '@uidotdev/usehooks'
 import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { IoLink, IoSend } from 'react-icons/io5'
 import { PiCatDuotone } from 'react-icons/pi'
 
-import key from '@/const/key'
 import { OneBotHttpApiContent, OneBotHttpApiPath } from '@/const/ob_api'
 
 import ChatInputModal from '@/components/chat_input/modal'
 import CodeEditor from '@/components/code_editor'
 import PageLoading from '@/components/page_loading'
 
+import {
+  getOneBotBusinessToken,
+  getOneBotBusinessUrl,
+  setOneBotBusinessToken,
+  setOneBotBusinessUrl
+} from '@/utils/onebot-debug'
 import { request } from '@/utils/request'
 import { parseAxiosResponse } from '@/utils/url'
 import { generateDefaultJson, parse } from '@/utils/zod'
+
+import useInstance from '@/hooks/use-instance'
 
 import DisplayStruct from './display_struct'
 
@@ -29,11 +35,11 @@ export interface OneBotApiDebugProps {
 
 const OneBotApiDebug: React.FC<OneBotApiDebugProps> = (props) => {
   const { path, data } = props
-  const [url] = useLocalStorage(key.storeURL, 'http://127.0.0.1:6099')
-  const defaultHttpUrl = url.replace(':6099', ':3000')
+  const { instance } = useInstance()
+  const instanceId = instance?.id ?? ''
   const [httpConfig, setHttpConfig] = useState({
-    url: defaultHttpUrl,
-    token: ''
+    url: instance?.businessUrl || getOneBotBusinessUrl(instanceId),
+    token: getOneBotBusinessToken(instanceId)
   })
   const [requestBody, setRequestBody] = useState('{}')
   const [responseContent, setResponseContent] = useState('')
@@ -41,10 +47,23 @@ const OneBotApiDebug: React.FC<OneBotApiDebugProps> = (props) => {
   const [isResponseOpen, setIsResponseOpen] = useState(false)
   const [isFetching, setIsFetching] = useState(false)
   const parsedRequest = parse(data.request)
+
+  useEffect(() => {
+    setHttpConfig({
+      url: instance?.businessUrl || getOneBotBusinessUrl(instanceId),
+      token: getOneBotBusinessToken(instanceId)
+    })
+  }, [instance?.businessUrl, instanceId])
   const parsedResponse = parse(data.response)
 
   const sendRequest = async () => {
     if (isFetching) return
+    if (!/^https?:\/\/[^\s/]+/i.test(httpConfig.url.trim())) {
+      toast.error('请显式输入 OneBot HTTP 业务地址')
+      return
+    }
+    setOneBotBusinessUrl(instanceId, httpConfig.url.trim())
+    setOneBotBusinessToken(instanceId, httpConfig.token.trim())
     setIsFetching(true)
     const r = toast.loading('正在发送请求...')
     try {
@@ -97,7 +116,7 @@ const OneBotApiDebug: React.FC<OneBotApiDebugProps> = (props) => {
       <div className="flex gap-2 items-center">
         <Input
           label="HTTP URL"
-          placeholder="输入 HTTP URL"
+          placeholder="显式输入 OneBot HTTP 业务地址"
           value={httpConfig.url}
           onChange={(e) =>
             setHttpConfig({ ...httpConfig, url: e.target.value })

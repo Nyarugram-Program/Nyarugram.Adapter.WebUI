@@ -36,13 +36,16 @@ const QQInfoCard: React.FC<QQInfoCardProps> = ({ data, error, loading }) => {
             <BsTencentQq />
           </div>
           <div className="relative flex-shrink-0 z-10">
-            <Image
-              src={
-                data?.avatarUrl ??
-                `https://q1.qlogo.cn/g?b=qq&nk=${data?.uin}&s=1`
-              }
-              className="shadow-md rounded-full w-12 aspect-square"
-            />
+            {data?.avatarUrl ? (
+              <Image
+                src={data.avatarUrl}
+                className="shadow-md rounded-full w-12 aspect-square"
+              />
+            ) : (
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-danger-200 text-danger-600 shadow-md">
+                <BsTencentQq size={24} />
+              </div>
+            )}
             <div
               className={clsx(
                 'w-4 h-4 rounded-full absolute right-0.5 bottom-0 border-2 border-danger-100 z-10',

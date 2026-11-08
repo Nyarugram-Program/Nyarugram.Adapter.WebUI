@@ -92,7 +92,7 @@ const RealTimeLogs = () => {
 
   return (
     <>
-      <title>实时日志 - NapCat WebUI</title>
+      <title>实时日志 - Nyarugram Adapter WebUI</title>
       <div className="flex items-center gap-2">
         <LogLevelSelect
           selectedKeys={logLevel}

@@ -52,6 +52,18 @@ const GenericForm = <T extends keyof NetworkConfigType>({
   })
 
   const submitAction: SubmitHandler<NetworkConfigType[T][0]> = async (data) => {
+    for (const field of fields) {
+      if (
+        field.type === 'input' &&
+        typeof (defaultValues as Record<string, unknown>)[
+          field.name as string
+        ] === 'number' &&
+        typeof data[field.name] !== 'number'
+      ) {
+        toast.error(`请填写有效的数字：${field.label}`)
+        return
+      }
+    }
     await onSubmit(data)
     onClose()
   }
@@ -99,11 +111,28 @@ const GenericForm = <T extends keyof NetworkConfigType>({
                 }
                 render={({ field: controllerField }) => {
                   switch (field.type) {
-                    case 'input':
+                    case 'input': {
+                      const isNumberField =
+                        typeof (defaultValues as Record<string, unknown>)[
+                          field.name as string
+                        ] === 'number'
                       return (
                         <Input
-                          value={controllerField.value as string}
-                          onChange={controllerField.onChange}
+                          value={
+                            isNumberField
+                              ? String(controllerField.value ?? '')
+                              : (controllerField.value as string)
+                          }
+                          onChange={(event) => {
+                            if (isNumberField) {
+                              const nextValue = event.target.value
+                              controllerField.onChange(
+                                nextValue === '' ? '' : Number(nextValue)
+                              )
+                            } else {
+                              controllerField.onChange(event)
+                            }
+                          }}
                           onBlur={controllerField.onBlur}
                           ref={controllerField.ref}
                           isRequired={field.isRequired}
@@ -112,6 +141,7 @@ const GenericForm = <T extends keyof NetworkConfigType>({
                           placeholder={field.placeholder}
                         />
                       )
+                    }
                     case 'select':
                       return (
                         <Select

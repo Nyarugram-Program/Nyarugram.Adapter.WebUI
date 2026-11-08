@@ -17,7 +17,7 @@ const OneBotConfigCard: React.FC<OneBotConfigCardProps> = (props) => {
   const { control, onSubmit, reset, isSubmitting, onRefresh } = props
   return (
     <>
-      <title>OneBot配置 - NapCat WebUI</title>
+      <title>OneBot配置 - Nyarugram Adapter WebUI</title>
       <Card className="bg-opacity-50 backdrop-blur-sm">
         <CardBody className="items-center py-5">
           <div className="w-96 max-w-full flex flex-col gap-2">

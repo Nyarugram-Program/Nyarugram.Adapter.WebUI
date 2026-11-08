@@ -110,7 +110,7 @@ export default function QQLoginPage() {
 
   return (
     <>
-      <title>QQ登录 - NapCat WebUI</title>
+      <title>QQ登录 - Nyarugram Adapter WebUI</title>
       <PureLayout>
         <div className="w-[608px] max-w-full py-8 px-2 md:px-8 overflow-hidden">
           <HoverEffectCard
