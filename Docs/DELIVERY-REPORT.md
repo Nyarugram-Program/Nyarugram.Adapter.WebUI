@@ -1,5 +1,111 @@
 # 交付报告：Milky / OneBot 多协议 WebUI（2026-11-08）
 
+> **历史范围说明（2026-11-08 追加）**：下方第 1 至第 9 节记录的是 NapCat 管理兼容仍存在时上一轮的交付。自本轮起，`managementKind=napcat`、NapCat WebUI Token/QQ 登录、OB11Config、NapCat 管理日志/系统状态等已移除；这些旧描述仅用于追溯，不代表当前能力。
+
+## 0. 本轮交付：移除 NapCat 专属管理兼容（2026-11-08）
+
+### 0.1 结论
+
+本轮按用户明确要求移除了 NapCat 专属管理兼容，保留 OneBot V11、Milky 两种业务协议，以及 `nyarugram-admin-v1`、`none` 两种管理模式。完成了旧实例迁移、路由/菜单/认证收敛、文档与依赖清理，并重新构建和打包。
+
+- 类型检查通过；前端 13 个测试文件、112 项测试全部通过。
+- 生产构建通过；发布包 223 个文件，归档大小 7,771,657 字节。
+- 浏览器使用构建产物 + 明确标识的本地替身服务完成 OneBot、Milky 与管理页面验证；未使用真实 NapCat 服务、真实 Nyarugram 后端或真实 Milky 宿主。
+- 历史报告中的 NapCat 联调、NapCat 兼容回归结论不再适用；真实 NapCat 标准 OneBot 接口仍未验证。
+
+### 0.2 移除内容
+
+源码与功能：
+
+- `src/controllers/webui_manager.ts`：NapCat WebUI Token 登录、认证检查、包/QQ 版本、历史/实时日志、系统状态。
+- `src/controllers/qq_manager.ts`：QQ 登录状态、二维码、快捷登录、OB11Config 读写。
+- `src/pages/qq_login.tsx`、`src/components/qr_code_login.tsx`、`src/components/quick_login.tsx`：QQ 扫码/快捷登录及轮询。
+- `src/pages/dashboard/index.tsx`、`network.tsx`、`logs.tsx`、`config/*`：旧 NapCat 仪表盘、网络配置、管理日志和配置保存。
+- `src/components/network_edit/*`、`display_card/*`、`log_com/*`、`button/*`、`input/image_input.tsx`、`web_config/*`、`qq_info_card.tsx`、`system_info.tsx`、`system_status_display.tsx`、`usage_pie.tsx`、`display_network_item.tsx`、`switch_card.tsx`、`napcat_repo_info.tsx`、`xterm.tsx`。
+- `src/store/modules/config.ts`、`src/hooks/use-config.ts`：NapCat OneBotConfig 全局状态与网络配置操作。
+- `src/utils/qq.ts`、`src/types/server.d.ts`、`src/types/onebot_conf.d.ts`、`src/types/onebot/config.d.ts`：NapCat 管理响应、登录列表和 OB11Config 模型。
+- `managementKind=napcat` 的类型、表单选项、菜单、路由分流、认证分支、标签和测试；`localhost:6099`、端口替换、旧 `storeURL` 自动建实例；NapCat WebUI 品牌入口和文案。
+- 依赖：`@xterm/xterm`、`@xterm/addon-fit`、`@xterm/addon-web-links`、`@xterm/addon-webgl`、`echarts`、`qrcode.react`、`@nextui-org/dropdown`、`@nextui-org/listbox`；`package-lock.json` 已同步。
+
+保留的共用代码按用途继续维护：布局、主题、实例切换、Monaco 编辑器、NextUI 组件、OneBot HTTP/WS 调试目录与事件渲染、Milky HTTP/事件/通话、`/admin/v1` 管理页面。
+
+### 0.3 保留能力
+
+- 业务协议：OneBot V11、Milky；不将任一协议对象转换成伪造的另一协议对象。
+- 管理模式：`nyarugram-admin-v1`（服务端实际能力可用时启用账号、配置、日志、指标、健康）与 `none`（显式业务 HTTP/事件入口和业务凭据的纯协议调试）。
+- 多实例管理、主题、布局、编辑器、统一管理页面、Milky 消息调试、事件恢复、账号隔离和通话能力展示。
+- OneBot 标准 HTTP/WebSocket 调试；按标准协议提供服务的 NapCat 实例按普通 OneBot 实例使用，不访问其管理接口。
+- `onebot11 + nyarugram-admin-v1` 可进入统一管理页面；`milky + nyarugram-admin-v1` 与 `milky + none` 保持原有行为。
+
+### 0.4 配置迁移策略
+
+实现位于 `src/utils/instance-storage.ts`，存储键仍为 `nyarugram.adapter.instances.v1`：
+
+- 读取到 `managementKind=napcat` 时转换为 `onebot11 + none`：保留稳定 `id`、`name`、`protocol` 和用户已显式填写的 `businessUrl`、`eventUrl`；`managementUrl` 清空；`updatedAt` 只在首次迁移时更新。
+- 迁移不会把 `managementUrl` 复制为 `businessUrl`，也不会把 NapCat 管理令牌写入业务令牌；缺少业务地址时实例页面显示“业务地址未配置；请编辑补充”。
+- 清除旧全局 `token`、`storeURL`、`nyarugram.admin-session-active` 和所有 `nyarugram.instance.*.napcatToken`；不删除业务令牌、事件游标或其他实例。
+- 对已是 `nyarugram-admin-v1`/`none` 的实例保持读取兼容；`none` 实例的残留管理地址清空；未知 `managementKind` 或损坏条目丢弃，不猜测入口。
+- 迁移幂等：第二次读取不再更改 `updatedAt`，`migratedInstanceIds` 为空。
+- 不再从旧全局 `storeURL` 自动创建实例。
+
+回归：`src/utils/instance-storage.test.ts`（11 项）、`src/types/instance.test.ts`（4 项）、`src/utils/instance-secrets.test.ts`（8 项）。覆盖迁移、管理地址不推断、凭据不转为业务令牌、幂等、其他实例/业务令牌/游标保留、损坏数据、重复执行、仅两种管理模式。
+
+### 0.5 验证结果
+
+| 项 | 结果 |
+|---|---|
+| `npm run webui:typecheck` | 通过 |
+| `npm run webui:test` | 13 个文件、112 项通过 |
+| 变更文件 ESLint（含 Prettier） | 通过；全仓 lint 仍受 Windows CRLF 影响，未执行全仓 `--fix` |
+| `npm run webui:build` | 通过，仍有 Monaco/pages chunk 体积警告 |
+| 新实例管理模式 | 浏览器下拉仅显示“Nyarugram /admin/v1”“仅协议调试” |
+| 旧实例迁移 | 浏览器注入 `managementKind=napcat` 实例后重载：ID/名称/其他实例/业务令牌保留，管理地址与 NapCat 令牌清除，缺少业务地址提示出现 |
+| OneBot HTTP | 浏览器调用 `get_status` 返回 HTTP 200 与真实替身 JSON |
+| OneBot WebSocket | 浏览器收到并显示 `meta_event/lifecycle` 连接事件 |
+| Milky HTTP | 浏览器 `send_private_message` 返回 `status=ok`、`message_seq=1000` |
+| Milky WebSocket ACK/resume | 重复投递只显示一次但发送两次 ACK；显式 resume 后 epoch 1→2、cursor/acked=2，并显示新事件 |
+| Milky SSE | 浏览器显示 SSE 事件；重载后按持久游标只显示 seq 5/6，未重复旧事件 |
+| 管理登录/账号/配置/日志/指标 | 浏览器建立管理会话，读取账号与指标；配置版本 0→1、状态 `requires_restart`；历史日志 + SSE 实时日志均显示 |
+| 实例切换 | 管理实例 → 仅协议实例 → 管理实例；管理标记按实例保留，旧管理会话未被清除，页面按新实例降级/恢复 |
+| OneBot + `/admin/v1` | 浏览器显示统一管理概览，菜单无通话控制，`/calls` 显示“未声明 Nyarugram 呼叫扩展” |
+| 已移除深链接 | `/qq_login` 显示“入口已移除”；`/network` 显示不可用原因 |
+| NapCat 管理请求 | 浏览器请求日志累计 497 条（跨多次替身重启）；无 `/auth`、`/base`、`/Log`、`/QQLogin`、`/OB11Config`、`/api/Log`、`/api/base` 等 NapCat 管理端点 |
+
+浏览器验证使用 `http://127.0.0.1:4174`，由本地 Node 脚本同时提供 `dist` 静态资源、OneBot 替身、Milky 替身和 `/admin/v1` 替身；所有服务均为本机替身，不是真实适配器/后端。真实 NapCat、真实 Milky 宿主、真实 PostgreSQL 和真实媒体设备本轮未复测。
+
+### 0.6 发布包
+
+| 项 | 值 |
+|---|---|
+| 构建目录 | `W:\Work\Nyarugram.Adapter.WebUI\dist`（223 个文件） |
+| 归档目录 | `D:\BotgramBuild\AdapterWebUI-token-clear-fix-dist`（223 个文件） |
+| 归档 | `D:\BotgramBuild\NyarugramAdapterWebUI-dist-2026-11-08-nonapcat.zip` |
+| 归档大小 | 7,771,657 字节 |
+| 归档 SHA-256 | `78e735c66ae6278f32ba95f32428e9c5927b645e28fc7376e462e3e38f44c559` |
+| 一致性 | 归档 223 个文件与构建目录逐文件 SHA-256 一致 |
+
+### 0.7 未验证或受限项
+
+| 项 | 状态 |
+|---|---|
+| 真实 NapCat 服务互操作 | 未验证；仅以 OneBot 标准替身验证 HTTP/WS，未访问 NapCat 管理接口 |
+| 真实 Nyarugram.Milky 宿主 / PostgreSQL | 本轮未启动；管理页面使用 `/admin/v1` 替身 |
+| 真实 Nyarugram 后端账号 | 未验证；替身管理接口返回固定账号 |
+| 真实双向语音/媒体设备 | 未实现；只展示 `calls.voice=false` |
+| 浏览器迟到回调专项 | 由现有实例切换/事件作用域/管理 CSRF 单元测试覆盖；本轮浏览器只验证切换后的页面状态 |
+| 全仓 lint | Windows CRLF 导致 10,278 个 Prettier 行尾错误；关闭 `prettier/prettier` 后全仓 ESLint 0 错误，变更文件含 Prettier 规则通过 |
+| 浏览器网络请求日志 | 替身服务记录；未验证真实反向代理/NAT 部署 |
+
+### 0.8 追加修复业务令牌清除与迁移
+
+- 业务令牌统一由 `instance-secrets.ts` 管理，OneBot 调试页直接复用相同读写函数。合法旧 `onebot.businessToken` 首次读取时迁移到通用业务令牌键，成功迁移后删除旧键。
+- 已有通用键保持优先，包括显式空值。实例页或调试页替换、清除令牌时都移除旧 OneBot 键，后续读取不会恢复已清除的旧凭据。
+- 迁移只处理同一实例的旧业务令牌，NapCat 管理令牌不会转成业务凭据，其他实例和事件游标保持原状态。
+- 新增 6 项凭据回归，覆盖一次性迁移、迁移前清除、替换后清除、通用键优先、OneBot 写入/清除和管理凭据隔离。凭据测试现为 8 项，全量 13 个文件、112 项测试通过，类型检查、改动文件 ESLint（含 Prettier）和生产构建通过。
+- 本轮发布包从 `D:\BotgramBuild\AdapterWebUI-token-clear-fix-dist` 生成，223 个文件已逐项校验归档内容与构建输出 SHA-256 一致，大小和哈希见第 0.6 节。
+- 本轮未复跑浏览器或真实服务联调，下方浏览器记录为此前移除 NapCat 管理轮次的验证。
+
+
 ## 1. 结论
 
 本轮完成并验证了以下交付：
@@ -111,14 +217,14 @@
 | npm 缓存 | `D:\BotgramBuild\npm-cache` |
 | 后端 | .NET SDK 8.0.204 / 9.0.320，目标 net8.0 |
 | 数据库 | PostgreSQL `127.0.0.1:56411`，测试库 `nyarugram_milky_test`、浏览器联调库 `nyarugram_milky_browser` |
-| 锁文件 | `package-lock.json`，SHA-256 `51800b0e33a9b482bae2f334bc00a95089b53cac0f199c1d69138d9a4acd7f3f` |
+| 锁文件 | `package-lock.json`，SHA-256 `7d9c7ab8e9cfd065611cdff3d21ff8962885fd2513fbeeb526b879596a4eee06` |
 
 构建产物：
 
-- 目录：`D:\BotgramBuild\AdapterWebUI-retry-after-fix-dist`（225 个文件）
-- 归档：`D:\BotgramBuild\NyarugramAdapterWebUI-dist-2026-11-08.zip`
-- 归档 SHA-256：`47188ecb4e4c526fecdf2880ab928d219f59983cc8f059743c072bbc66b7edb3`
-- 归档大小：8,404,376 字节
+- 目录：`D:\BotgramBuild\AdapterWebUI-token-clear-fix-dist`（223 个文件）
+- 归档：`D:\BotgramBuild\NyarugramAdapterWebUI-dist-2026-11-08-nonapcat.zip`
+- 归档 SHA-256：`78e735c66ae6278f32ba95f32428e9c5927b645e28fc7376e462e3e38f44c559`
+- 归档大小：7,771,657 字节
 
 复现命令：
 

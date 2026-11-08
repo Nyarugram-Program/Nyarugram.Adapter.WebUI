@@ -1,9 +1,5 @@
 import { AxiosResponse } from 'axios'
 
-import { selectActiveInstance } from '@/store/modules/instances'
-
-import store from '@/store'
-
 /**
  * 打开链接
  * @param url 链接地址
@@ -15,28 +11,6 @@ export function openUrl(url: string, newTab = true) {
   } else {
     window.location.href = url
   }
-}
-
-/**
- * 获取完整的服务器地址
- * @param path 路径
- */
-export const getFullServerUrl = (path: string) => {
-  const activeInstance = selectActiveInstance(store.getState())
-
-  if (!activeInstance) {
-    throw new Error('尚未登记适配器实例')
-  }
-  if (activeInstance.managementKind !== 'napcat') {
-    throw new Error('当前实例不是 NapCat 管理模式')
-  }
-  if (!activeInstance.managementUrl) {
-    throw new Error('实例未配置 NapCat 管理地址')
-  }
-
-  const storeURL = activeInstance.managementUrl
-
-  return `${storeURL.replace(/\/+$/, '')}${path.startsWith('/') ? path : `/${path}`}`
 }
 
 /**

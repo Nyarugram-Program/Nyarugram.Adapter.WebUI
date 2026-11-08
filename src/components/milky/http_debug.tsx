@@ -101,6 +101,7 @@ export default function MilkyHttpDebug() {
         parsedBody,
         controller.signal
       )
+      if (controller.signal.aborted) return
       setResponseText(stringifyJson(response, 2))
       if (response.status === 'ok') {
         toast.success('请求已完成，请查看响应')

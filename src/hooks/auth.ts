@@ -9,7 +9,6 @@ import {
   notifyAuthChanged,
   subscribeAuth
 } from '@/utils/auth-store'
-import { getNapcatToken, setNapcatToken } from '@/utils/instance-secrets'
 
 import NyarugramAdminManager, {
   AdminOperationInvalidatedError
@@ -18,26 +17,17 @@ import NyarugramAdminManager, {
 import useInstance from './use-instance'
 
 const useAuth = () => {
-  // 订阅登录状态变化，替代 useLocalStorage 的全局 token。
+  // 订阅登录状态变化，替代旧的全局登录标记。
   useSyncExternalStore(subscribeAuth, getAuthSnapshot, getAuthSnapshot)
   const { instance, invalidate } = useInstance()
 
-  const napcatToken = instance ? getNapcatToken(instance.id) : ''
   const isAuth = instance
-    ? instance.managementKind === 'none'
-      ? true
-      : instance.managementKind === 'napcat'
-        ? !!napcatToken
-        : instance.managementKind === 'nyarugram-admin-v1'
-          ? hasAdminSessionMarker(instance.id, instance.managementUrl)
-          : false
+    ? instance.managementKind === 'none' ||
+      hasAdminSessionMarker(instance.id, instance.managementUrl)
     : false
 
   const revokeAuth = useCallback(async () => {
     if (!instance) return
-    if (instance.managementKind === 'napcat') {
-      setNapcatToken(instance.id, '')
-    }
     if (instance.managementKind === 'nyarugram-admin-v1') {
       try {
         await NyarugramAdminManager.logout(instance)
@@ -56,7 +46,6 @@ const useAuth = () => {
   }, [instance, invalidate])
 
   return {
-    token: napcatToken,
     isAuth,
     revokeAuth
   }

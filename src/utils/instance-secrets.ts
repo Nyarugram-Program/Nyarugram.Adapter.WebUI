@@ -1,24 +1,26 @@
 const businessTokenKey = (instanceId: string) =>
   `nyarugram.instance.${instanceId}.businessToken`
 
-const napcatTokenKey = (instanceId: string) =>
+const retiredNapcatTokenKey = (instanceId: string) =>
   `nyarugram.instance.${instanceId}.napcatToken`
 
-const legacyNapcatTokenKey = 'token'
+const retiredOneBotDebugTokenKey = (instanceId: string) =>
+  `nyarugram.instance.${instanceId}.onebot.businessToken`
 
-const readLegacyToken = () => {
-  try {
-    const stored = localStorage.getItem(legacyNapcatTokenKey)
-    if (!stored) return ''
-    const parsed: unknown = JSON.parse(stored)
-    return typeof parsed === 'string' ? parsed : ''
-  } catch {
-    return ''
+export const getInstanceBusinessToken = (instanceId: string) => {
+  if (!instanceId) return ''
+  const current = sessionStorage.getItem(businessTokenKey(instanceId))
+  const legacy = sessionStorage.getItem(retiredOneBotDebugTokenKey(instanceId))
+  if (legacy !== null) {
+    // Preserve a legitimate old business token once, while the current key
+    // remains authoritative even when its value is explicitly empty.
+    if (current === null) {
+      sessionStorage.setItem(businessTokenKey(instanceId), legacy)
+    }
+    sessionStorage.removeItem(retiredOneBotDebugTokenKey(instanceId))
   }
+  return current ?? legacy ?? ''
 }
-
-export const getInstanceBusinessToken = (instanceId: string) =>
-  instanceId ? (sessionStorage.getItem(businessTokenKey(instanceId)) ?? '') : ''
 
 export const setInstanceBusinessToken = (instanceId: string, token: string) => {
   if (!instanceId) return
@@ -27,41 +29,12 @@ export const setInstanceBusinessToken = (instanceId: string, token: string) => {
   } else {
     sessionStorage.removeItem(businessTokenKey(instanceId))
   }
-}
-
-export const getNapcatToken = (instanceId: string) =>
-  instanceId ? (sessionStorage.getItem(napcatTokenKey(instanceId)) ?? '') : ''
-
-export const setNapcatToken = (instanceId: string, token: string) => {
-  if (!instanceId) return
-  if (token) {
-    sessionStorage.setItem(napcatTokenKey(instanceId), token)
-  } else {
-    sessionStorage.removeItem(napcatTokenKey(instanceId))
-  }
-}
-
-/**
- * 旧版本把 NapCat 令牌和 storeURL 放在全局 localStorage。实例化后只把令牌
- * 迁移到对应实例的 sessionStorage，并删除全局副本，避免跨实例误用。
- */
-export const migrateLegacyNapcatToken = (candidateInstanceIds: string[]) => {
-  const token = readLegacyToken()
-  if (token) {
-    const target = candidateInstanceIds.find(
-      (instanceId) => !sessionStorage.getItem(napcatTokenKey(instanceId))
-    )
-    if (target) sessionStorage.setItem(napcatTokenKey(target), token)
-  }
-  localStorage.removeItem(legacyNapcatTokenKey)
+  sessionStorage.removeItem(retiredOneBotDebugTokenKey(instanceId))
 }
 
 export const clearInstanceSecrets = (instanceId: string) => {
   if (!instanceId) return
-  sessionStorage.removeItem(businessTokenKey(instanceId))
-  sessionStorage.removeItem(napcatTokenKey(instanceId))
-  // 旧 OneBot 调试页使用的独立令牌键。
-  sessionStorage.removeItem(
-    `nyarugram.instance.${instanceId}.onebot.businessToken`
-  )
+  setInstanceBusinessToken(instanceId, '')
+  // NapCat 管理令牌只做清理，不能迁移为业务凭据。
+  sessionStorage.removeItem(retiredNapcatTokenKey(instanceId))
 }

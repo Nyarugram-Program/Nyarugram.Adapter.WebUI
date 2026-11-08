@@ -1,37 +1,39 @@
 # Milky 接入与多协议改造方案
 
-本文基于 2026-11-08 对本仓库及同级 Nyarugram.Milky、Nyarugram.OnebotV11 的源码检查。前端多实例、协议分流、Milky 业务调试、事件恢复和统一管理页面已实现；Nyarugram.Milky 已实现 `/admin/v1` v1 子集并通过宿主测试。真实 NapCat 服务、Nyarugram.OnebotV11 和真实双向语音仍未验证，具体证据与限制见 `Docs/DELIVERY-REPORT.md`。
+本文基于 2026-11-08 对本仓库及同级 Nyarugram.Milky、Nyarugram.OnebotV11 的源码检查。前端多实例、协议分流、Milky 业务调试、事件恢复和统一管理页面已实现；Nyarugram.Milky 已实现 `/admin/v1` v1 子集并通过宿主测试。NapCat 专属管理兼容已在本版本移除，只保留 Nyarugram `/admin/v1` 与仅协议调试两种管理模式。真实 NapCat 服务、Nyarugram.OnebotV11 和真实双向语音仍未验证，具体证据与限制见 `Docs/DELIVERY-REPORT.md`。
 
 ## 交付目标
 
-一个 WebUI 可以选择多个适配器实例，支持 OneBot V11 与 Milky 的基础状态、API 调试和事件查看。具备统一管理接口的 Nyarugram 实例进一步支持账号登录、配置、日志及运行指标。现有 NapCat 模式通过独立管理客户端继续使用。
+一个 WebUI 可以选择多个适配器实例，支持 OneBot V11 与 Milky 的基础状态、API 调试和事件查看。具备统一管理接口的 Nyarugram 实例进一步支持账号登录、配置、日志及运行指标。没有管理接口的实例使用纯协议调试；NapCat 专属管理客户端不再保留。
 
 首期必须完成 Milky 普通消息收发调试、联系人与群查询、事件查看及断线恢复。通话页面按能力提供控制操作，真实音频在适配器具备媒体能力后验收。
 
-## 当前耦合位置
+## 改造前耦合位置（历史基线）
 
-| 位置 | 当前行为 | 改造要求 |
+以下表格记录 2026-11-08 改造前的耦合点，仅用于追溯。相关 NapCat 管理文件和入口已在同版本移除；当前实现以源码和交付报告为准。
+
+| 位置 | 改造前行为 | 处理结果 |
 |---|---|---|
-| src/controllers/qq_manager.ts | 调用 QQLogin 和 OB11Config | 将 NapCat 管理封装限定在旧模式，新增 Nyarugram 管理客户端 |
-| src/controllers/webui_manager.ts | NapCat 登录、日志、QQ 版本与系统状态 | 对接独立管理契约，统一页面所需视图模型 |
-| src/utils/request.ts | 全局 storeURL、token 及 code/data/message 外壳 | 请求上下文显式绑定实例，按管理模式及业务协议解析响应 |
-| src/store/modules/config.ts | 全局 OneBotConfig | 公共实例元数据与协议专属配置分离 |
-| src/components/onebot/api/debug.tsx | 静态 OneBot API 目录，端口 6099 替换成 3000 | 业务入口显式配置，保留 OneBot 目录并增加 Milky 目录 |
+| src/controllers/qq_manager.ts | 调用 QQLogin 和 OB11Config | 已删除；NapCat 管理配置与 QQ 登录不再提供 |
+| src/controllers/webui_manager.ts | NapCat 登录、日志、QQ 版本与系统状态 | 已删除；日志/指标/健康改由 `/admin/v1` 管理客户端提供 |
+| src/utils/request.ts | 全局 storeURL、token 及 code/data/message 外壳 | 已移除全局 NapCat 管理请求与 baseURL；协议调试只使用显式目标地址 |
+| src/store/modules/config.ts | 全局 OneBotConfig | 已删除；配置文件只由 `/admin/v1` 管理页面读写 |
+| src/components/onebot/api/debug.tsx | 静态 OneBot API 目录，端口 6099 替换成 3000 | 改为显式业务地址；保留 OneBot 标准目录并增加 Milky 目录 |
 | src/hooks/use-websocket-debug.ts | 只解析 OneBot 事件和响应 | 公共连接生命周期配合独立协议解析器 |
-| src/pages/qq_login.tsx | QQ 扫码与快捷登录 | 根据管理模式切换登录视图，Nyarugram 使用账号密码和验证器 |
+| src/pages/qq_login.tsx | QQ 扫码与快捷登录 | 已删除；`/qq_login` 深链接显示入口移除说明 |
 | src/components/qq_info_card.tsx | QQ 公网头像回退 | 使用适配器提供的授权资源或本地默认头像 |
 | src/utils/music.ts、src/components/hitokoto.tsx | 自动访问公网服务 | 默认关闭，提供本地或部署者配置的替代入口 |
 | .gitignore | 忽略 npm/yarn/pnpm 全部锁文件 | 选定包管理器，提交相应锁文件 |
 
-保留布局、主题、表单、Monaco、xterm 和弹窗等成熟组件。协议与管理抽象保持最小范围，优先移动现有逻辑到明确客户端，避免创建无调用者的框架。
+保留布局、主题、表单、Monaco 和弹窗等成熟组件。协议与管理抽象保持最小范围，优先移动现有逻辑到明确客户端，避免创建无调用者的框架。
 
 ## 两个独立的选择维度
 
-业务 protocol 首期支持 onebot11 和 milky。管理 managementKind 支持 napcat、nyarugram-admin-v1 和 none。
+业务 protocol 支持 onebot11 和 milky。管理 managementKind 只支持 nyarugram-admin-v1 和 none。
 
 示例组合包括以下情况。
 
-- onebot11 + napcat 继续使用原 NapCat 管理和业务接口。
+- onebot11 + none 直接使用显式业务 HTTP/WebSocket 地址和业务凭据，包括按标准协议提供服务的 NapCat 实例。
 - onebot11 + nyarugram-admin-v1 为后续 Nyarugram.OnebotV11 提供统一管理能力。
 - milky + nyarugram-admin-v1 在 Milky 实例实现管理契约后启用完整面板。
 - milky + none 直接使用现有业务 API 和事件连接，账号由适配器 CLI 预先登录。
@@ -80,7 +82,7 @@
 
 当前 Nyarugram.Milky 只有业务 API、/event、媒体入口和 /health，账号管理依赖 CLI。统一 /admin/v1 是拟新增管理面。
 
-没有管理 API 时，先实现纯协议调试模式，页面明确显示账号登录、配置保存及管理日志不可用。已有 Milky 业务路径仍可使用。具备统一管理 API 后再启用完整面板。
+没有管理 API 时使用纯协议调试模式，页面明确显示账号登录、配置保存及管理日志不可用。已有 OneBot/Milky 业务路径仍可使用。具备统一管理 API 后再启用完整面板。
 
 建议同源部署，前端静态资源由适配器或部署者反向代理托管。支持根路径和配置的子路径，静态资源、管理 API、业务 API、SPA fallback 不相互覆盖。
 
@@ -107,7 +109,7 @@
 
 ## 完成标准
 
-Milky 已能在浏览器真实收发消息并恢复事件，OneBot 现有模式通过回归，管理能力按真实后端声明启用。未实现能力有明确状态，配置保存、账号在线和电话媒体均有可追溯证据。
+Milky 已能在浏览器真实收发消息并恢复事件，OneBot 标准协议调试通过回归，管理能力按真实后端声明启用。未实现能力有明确状态，配置保存、账号在线和电话媒体均有可追溯证据。NapCat 专属管理兼容不在完成范围内。
 
 依赖来源可参考 Milky 官方规范及本地固定副本，升级时复核版本。[Milky 官方文档](https://milky.ntqqrev.org/)
 
@@ -125,3 +127,14 @@ Milky 已能在浏览器真实收发消息并恢复事件，OneBot 现有模式�
 - 显式重连和连接失败恢复都先经过身份确认；新面板从持久化游标构造 `Last-Event-ID` 和 `nyarugram_cursor`。服务端命名消费者继续保存初始/恢复位置。
 - 身份查询的网络错误、超时、408、429、5xx 使用 1s→2s→4s→8s→16s→30s 退避并遵循 `Retry-After`；401/403、账号未登录使用 30 秒慢重试，期间不建立事件连接。
 - 手动“重新确认身份”与自动重试共用同一 AbortController 和定时器；实例、入口、凭据变化或卸载会取消旧查询、定时器、旧连接和迟到回调。
+
+
+## 2026-11-08 NapCat 管理兼容移除与实例迁移
+
+- 支持的管理模式收敛为 `nyarugram-admin-v1` 与 `none`。`managementKind=napcat` 从类型、实例表单、路由分流、认证、菜单和标签中删除。
+- 删除 NapCat WebUI Token 登录、认证检查、管理会话、QQ 扫码/快捷登录、OB11Config、网络配置、管理日志、系统状态、QQ/安装包版本查询及专属响应模型。
+- 删除默认 `localhost:6099`、端口替换和旧 `storeURL` 自动建实例逻辑。不得根据旧管理地址推断业务地址。
+- 旧实例迁移策略：保留稳定 ID、名称、协议和显式业务/事件入口，迁移为 `onebot11 + none`，清空管理地址，删除旧 NapCat 令牌与登录标记；不迁移管理凭据为业务凭据。迁移幂等，不影响其他实例、业务令牌和事件游标。
+- 缺少业务地址的迁移实例在实例管理中显示补充提示；迁移后不再请求任何 NapCat 管理端点。
+- OneBot 标准 HTTP/WebSocket 调试仍用于 `onebot11 + none`，包括以标准协议提供服务的 NapCat 实例；Milky 两种管理模式保持可用。
+- `/qq_login` 等已移除深链接显示明确说明；`/network` 在无对应管理配置能力时显示真实原因。

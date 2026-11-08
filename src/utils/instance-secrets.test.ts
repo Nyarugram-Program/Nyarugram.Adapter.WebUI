@@ -3,11 +3,9 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   clearInstanceSecrets,
   getInstanceBusinessToken,
-  getNapcatToken,
-  migrateLegacyNapcatToken,
-  setInstanceBusinessToken,
-  setNapcatToken
+  setInstanceBusinessToken
 } from './instance-secrets'
+import { getOneBotBusinessToken, setOneBotBusinessToken } from './onebot-debug'
 
 describe('per-instance credentials', () => {
   beforeEach(() => {
@@ -24,43 +22,125 @@ describe('per-instance credentials', () => {
     expect(getInstanceBusinessToken('c')).toBe('')
   })
 
-  it('isolates NapCat tokens by instance', () => {
-    setNapcatToken('a', 'napcat-a')
-    setNapcatToken('b', 'napcat-b')
-
-    expect(getNapcatToken('a')).toBe('napcat-a')
-    expect(getNapcatToken('b')).toBe('napcat-b')
-  })
-
-  it('clears both token kinds for one instance only', () => {
+  it('clears business and retired debug keys for one instance only', () => {
     setInstanceBusinessToken('a', 'business-a')
-    setNapcatToken('a', 'napcat-a')
+    sessionStorage.setItem('nyarugram.instance.a.napcatToken', 'retired-a')
+    sessionStorage.setItem(
+      'nyarugram.instance.a.onebot.businessToken',
+      'legacy-debug-a'
+    )
     setInstanceBusinessToken('b', 'business-b')
 
     clearInstanceSecrets('a')
 
     expect(getInstanceBusinessToken('a')).toBe('')
-    expect(getNapcatToken('a')).toBe('')
+    expect(
+      sessionStorage.getItem('nyarugram.instance.a.napcatToken')
+    ).toBeNull()
+    expect(
+      sessionStorage.getItem('nyarugram.instance.a.onebot.businessToken')
+    ).toBeNull()
     expect(getInstanceBusinessToken('b')).toBe('business-b')
   })
 
-  it('migrates the legacy global NapCat token to one instance and removes it', () => {
-    localStorage.setItem('token', JSON.stringify('legacy-token'))
+  it('migrates an old OneBot business token once through either reader', () => {
+    sessionStorage.setItem(
+      'nyarugram.instance.a.onebot.businessToken',
+      'legacy-a'
+    )
 
-    migrateLegacyNapcatToken(['first', 'second'])
-
-    expect(getNapcatToken('first')).toBe('legacy-token')
-    expect(getNapcatToken('second')).toBe('')
-    expect(localStorage.getItem('token')).toBeNull()
+    expect(getInstanceBusinessToken('a')).toBe('legacy-a')
+    expect(getOneBotBusinessToken('a')).toBe('legacy-a')
+    expect(sessionStorage.getItem('nyarugram.instance.a.businessToken')).toBe(
+      'legacy-a'
+    )
+    expect(
+      sessionStorage.getItem('nyarugram.instance.a.onebot.businessToken')
+    ).toBeNull()
   })
 
-  it('does not overwrite an existing instance token during migration', () => {
-    localStorage.setItem('token', JSON.stringify('legacy-token'))
-    setNapcatToken('first', 'current-token')
+  it('clears an unmigrated token from the instance page without resurrecting it', () => {
+    sessionStorage.setItem(
+      'nyarugram.instance.a.onebot.businessToken',
+      'legacy-a'
+    )
+    sessionStorage.setItem(
+      'nyarugram.instance.b.onebot.businessToken',
+      'legacy-b'
+    )
+    sessionStorage.setItem('nyarugram.events.v3.test', 'unchanged-cursor')
 
-    migrateLegacyNapcatToken(['first', 'second'])
+    setInstanceBusinessToken('a', '')
 
-    expect(getNapcatToken('first')).toBe('current-token')
-    expect(getNapcatToken('second')).toBe('legacy-token')
+    expect(getInstanceBusinessToken('a')).toBe('')
+    expect(getOneBotBusinessToken('a')).toBe('')
+    expect(
+      sessionStorage.getItem('nyarugram.instance.a.onebot.businessToken')
+    ).toBeNull()
+    expect(
+      sessionStorage.getItem('nyarugram.instance.b.onebot.businessToken')
+    ).toBe('legacy-b')
+    expect(sessionStorage.getItem('nyarugram.events.v3.test')).toBe(
+      'unchanged-cursor'
+    )
+  })
+
+  it('replaces an old token through instance settings and can clear it permanently', () => {
+    sessionStorage.setItem(
+      'nyarugram.instance.a.onebot.businessToken',
+      'legacy-a'
+    )
+
+    setInstanceBusinessToken('a', 'replacement-a')
+    expect(getOneBotBusinessToken('a')).toBe('replacement-a')
+    expect(
+      sessionStorage.getItem('nyarugram.instance.a.onebot.businessToken')
+    ).toBeNull()
+
+    setInstanceBusinessToken('a', '')
+    expect(getOneBotBusinessToken('a')).toBe('')
+  })
+
+  it('keeps the current key authoritative, including an explicitly empty value', () => {
+    for (const current of ['current-a', '']) {
+      sessionStorage.setItem('nyarugram.instance.a.businessToken', current)
+      sessionStorage.setItem(
+        'nyarugram.instance.a.onebot.businessToken',
+        'stale-a'
+      )
+
+      expect(getOneBotBusinessToken('a')).toBe(current)
+      expect(getInstanceBusinessToken('a')).toBe(current)
+      expect(
+        sessionStorage.getItem('nyarugram.instance.a.onebot.businessToken')
+      ).toBeNull()
+    }
+  })
+
+  it('shares OneBot writes and clears with the instance credential reader', () => {
+    sessionStorage.setItem(
+      'nyarugram.instance.a.onebot.businessToken',
+      'legacy-a'
+    )
+
+    setOneBotBusinessToken('a', 'replacement-a')
+    expect(getInstanceBusinessToken('a')).toBe('replacement-a')
+    expect(
+      sessionStorage.getItem('nyarugram.instance.a.onebot.businessToken')
+    ).toBeNull()
+
+    setOneBotBusinessToken('a', '')
+    expect(getInstanceBusinessToken('a')).toBe('')
+    expect(getOneBotBusinessToken('a')).toBe('')
+  })
+
+  it('never migrates a retired NapCat management token into a business token', () => {
+    sessionStorage.setItem('nyarugram.instance.a.napcatToken', 'management-a')
+
+    expect(getInstanceBusinessToken('a')).toBe('')
+    expect(getOneBotBusinessToken('a')).toBe('')
+    expect(
+      sessionStorage.getItem('nyarugram.instance.a.businessToken')
+    ).toBeNull()
   })
 })

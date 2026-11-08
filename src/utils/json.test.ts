@@ -4,7 +4,8 @@ import { parseJson, stringifyJson } from './json'
 
 describe('JSON int64 handling', () => {
   it('keeps signed 64-bit identifiers exact instead of rounding them', () => {
-    const text = '{"user_id":9223372036854775807,"group_id":-9223372036854775808}'
+    const text =
+      '{"user_id":9223372036854775807,"group_id":-9223372036854775808}'
     const parsed = parseJson(text) as {
       user_id: bigint
       group_id: bigint

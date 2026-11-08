@@ -6,18 +6,16 @@ import { motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 import { MdMenu, MdMenuOpen } from 'react-icons/md'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 
 import key from '@/const/key'
 
 import errorFallbackRender from '@/components/error_fallback'
 import SideBar from '@/components/sidebar'
 
-import useAuth from '@/hooks/auth'
 import useInstance from '@/hooks/use-instance'
 
-import { getMenuItems, type MenuItem } from '@/config/site'
-import QQManager from '@/controllers/qq_manager'
+import { type MenuItem, getMenuItems } from '@/config/site'
 
 const findTitle = (menus: MenuItem[], pathname: string): string[] => {
   const paths: string[] = []
@@ -45,21 +43,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const contentRef = useRef<HTMLDivElement>(null)
   const [openSideBar, setOpenSideBar] = useState(true)
   const [b64img] = useLocalStorage(key.backgroundImage, '')
-  const navigate = useNavigate()
-  const { isAuth } = useAuth()
   const { instance } = useInstance()
   const menus = useMemo(() => getMenuItems(instance), [instance])
-
-  const checkIsQQLogin = async () => {
-    try {
-      const result = await QQManager.checkQQLoginStatus()
-      if (!result.isLogin) {
-        navigate('/qq_login', { replace: true })
-      }
-    } catch {
-      navigate('/web_login', { replace: true })
-    }
-  }
 
   useEffect(() => {
     contentRef?.current?.scrollTo?.({
@@ -67,16 +52,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       behavior: 'smooth'
     })
   }, [location.pathname])
-
-  useEffect(() => {
-    if (
-      isAuth &&
-      instance?.protocol === 'onebot11' &&
-      instance.managementKind === 'napcat'
-    ) {
-      checkIsQQLogin()
-    }
-  }, [isAuth, instance?.id, instance?.protocol, instance?.managementKind])
 
   const title = useMemo(() => {
     return findTitle(menus, location.pathname)

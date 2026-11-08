@@ -48,9 +48,9 @@ export default function AboutPage() {
             </CardHeader>
             <CardBody className="gap-3 text-sm leading-6 text-default-600 dark:text-default-300">
               <p>
-                Nyarugram Adapter WebUI 基于 NapCat WebUI 的 MIT
-                许可源码改造，用于管理 OneBot V11 与 Milky
-                适配器实例，并保留原协议调试能力。
+                Nyarugram Adapter WebUI 源自 NextNapCatWebUI（MIT），保留上游
+                MIT 许可证与版权声明。本版本已移除 NapCat 专属管理客户端，只保留
+                OneBot V11、Milky 业务协议以及 Nyarugram /admin/v1 管理接口。
               </p>
               <p>
                 页面只连接部署者显式登记的实例。未实现或未配置的能力会显示真实原因，不会伪造保存成功、在线状态或媒体能力。
@@ -59,11 +59,11 @@ export default function AboutPage() {
                 当前版本默认不加载在线音乐、一言、公网头像或统计脚本；上游技术链接仅在用户点击后访问。
               </p>
               <div className="flex flex-wrap gap-3">
-                <Link isExternal href="https://github.com/bietiaop/NextNapCatWebUI">
+                <Link
+                  isExternal
+                  href="https://github.com/bietiaop/NextNapCatWebUI"
+                >
                   <GithubIcon className="w-6 h-6" /> 原 WebUI 上游
-                </Link>
-                <Link isExternal href="https://github.com/NapNeko/NapCatQQ">
-                  <GithubIcon className="w-6 h-6" /> NapCat
                 </Link>
                 <Link isExternal href="https://milky.ntqqrev.org/">
                   Milky 文档

@@ -9,7 +9,6 @@ import {
 
 import type { AdapterInstance } from '@/types/instance'
 
-export type SiteConfig = typeof siteConfig
 export interface MenuItem {
   label: string
   icon?: React.ReactNode
@@ -53,37 +52,13 @@ const icons = {
   )
 }
 
-export const siteConfig = {
-  name: 'Nyarugram Adapter WebUI',
-  description: 'Nyarugram 适配器管理界面，支持 OneBot V11 与 Milky。',
-  navItems: [
-    { label: '基础信息', icon: icons.base, href: '/' },
-    { label: '网络配置', icon: icons.network, href: '/network' },
-    { label: '其他配置', icon: icons.settings, href: '/config' },
-    { label: '系统日志', icon: icons.logs, href: '/logs' },
-    {
-      label: '接口调试',
-      icon: icons.debug,
-      items: [
-        { label: 'HTTP', href: '/debug/http' },
-        { label: 'Websocket', href: '/debug/ws' }
-      ]
-    },
-    { label: '关于', icon: icons.info, href: '/about' }
-  ] as MenuItem[],
-  links: {
-    github: 'https://github.com/NapNeko/NapCatQQ',
-    docs: 'https://napcat.napneko.icu/'
-  }
+const instanceItem: MenuItem = {
+  label: '实例管理',
+  icon: icons.settings,
+  href: '/instances'
 }
 
 export const getMenuItems = (instance?: AdapterInstance): MenuItem[] => {
-  const instanceItem: MenuItem = {
-    label: '实例管理',
-    icon: icons.settings,
-    href: '/instances'
-  }
-
   if (instance?.managementKind === 'nyarugram-admin-v1') {
     const items: MenuItem[] = [
       instanceItem,
@@ -124,27 +99,9 @@ export const getMenuItems = (instance?: AdapterInstance): MenuItem[] => {
   }
 
   if (instance?.protocol === 'onebot11') {
-    if (instance.managementKind === 'none') {
-      return [
-        instanceItem,
-        { label: '协议概览', icon: icons.base, href: '/' },
-        {
-          label: '接口调试',
-          icon: icons.debug,
-          items: [
-            { label: 'HTTP', href: '/debug/http' },
-            { label: 'Websocket', href: '/debug/ws' }
-          ]
-        },
-        { label: '关于', icon: icons.info, href: '/about' }
-      ]
-    }
     return [
       instanceItem,
-      { label: '基础信息', icon: icons.base, href: '/' },
-      { label: '网络配置', icon: icons.network, href: '/network' },
-      { label: '其他配置', icon: icons.settings, href: '/config' },
-      { label: '系统日志', icon: icons.logs, href: '/logs' },
+      { label: '协议概览', icon: icons.base, href: '/' },
       {
         label: '接口调试',
         icon: icons.debug,

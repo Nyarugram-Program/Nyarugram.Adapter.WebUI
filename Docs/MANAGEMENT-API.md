@@ -1,6 +1,6 @@
 # 统一管理接口契约
 
-本文定义 Nyarugram.Milky 与未来 Nyarugram.OnebotV11 共同实现的 Web 管理能力。Nyarugram.Milky 已实现下表 v1 子集（`src/Nyarugram.Milky.Host/AdminEndpoints.cs`），前端在 `managementKind=nyarugram-admin-v1` 时使用；Nyarugram.OnebotV11 尚未实现，前端必须识别缺失管理面并允许纯业务调试模式。宿主测试与浏览器联调证据见 `Docs/DELIVERY-REPORT.md`。
+本文定义 Nyarugram.Milky 与未来 Nyarugram.OnebotV11 共同实现的 Web 管理能力。Nyarugram.Milky 已实现下表 v1 子集（`src/Nyarugram.Milky.Host/AdminEndpoints.cs`），前端在 `managementKind=nyarugram-admin-v1` 时使用；Nyarugram.OnebotV11 尚未实现，前端必须识别缺失管理面并允许纯业务调试模式。NapCat 专属管理客户端已移除，`/admin/v1` 是唯一管理契约，`managementKind=none` 是唯一无管理接口模式。宿主测试与浏览器联调证据见 `Docs/DELIVERY-REPORT.md`。
 
 ## 边界
 
@@ -68,7 +68,7 @@
 | GET /logs | 查询受限日志条目或可访问日志列表 | 分页、有界读取、脱敏 |
 | GET /logs/stream | SSE 日志流 | 鉴权、级别过滤、断线清理、有界队列 |
 
-日志条目使用稳定 ID、时间、级别、来源及文本。历史文件读取验证允许范围，禁止根据任意浏览器路径读取文件。xterm 用于显示日志，不提供隐式系统命令执行入口。
+日志条目使用稳定 ID、时间、级别、来源及文本。历史文件读取验证允许范围，禁止根据任意浏览器路径读取文件。前端使用有界列表显示日志，不提供隐式系统命令执行入口。
 
 ## 业务调试和呼叫
 
@@ -80,10 +80,10 @@ Milky 实例的 nyarugram_get_capabilities 可作为业务能力来源，管理�
 
 ## 前端降级规则
 
-- managementKind=none 时，可用显式配置的业务地址和业务凭据进入协议调试。
+- managementKind=none 时，可用显式配置的业务地址和业务凭据进入协议调试；OneBot 与 Milky 均适用。
 - /admin/v1 不存在时显示管理能力未实现，保留协议调试入口。
 - 业务在线但管理断线、管理在线但账号未登录等情况分别展示。
-- NapCat 管理模式使用原有管理客户端，其响应外壳及配置结构不扩散到统一管理契约。
+- 不提供 NapCat 管理模式或 NapCat 响应外壳；旧实例在读取时迁移为 `onebot11 + none`。
 
 ## 协同交付
 
@@ -124,3 +124,12 @@ Milky 实例的 nyarugram_get_capabilities 可作为业务能力来源，管理�
 - 客户端把每个写操作绑定到实例、规范化管理入口、本地会话代际、`session_id` 和 CSRF。操作等待 `GET /session` 或刷新 CSRF 期间如果代际/入口变化，停止发送并返回操作失效。
 - 同一 `session_id` 的 `csrf_rejected` 允许清空 CSRF、重新 `GET /session` 并重试一次；新 `session_id` 表示新登录会话，旧操作不得重试，旧成功/401/403/退出也不得更新或清除新缓存。
 - 已发送请求在失效时明确标记服务端结果可能未知；浏览器取消只保证本地停止等待，不保证服务端未执行。
+
+
+## 2026-11-08 管理模式收敛
+
+- `managementKind` 只接受 `nyarugram-admin-v1` 和 `none`。前端实例表单、类型、菜单、认证和路由不再识别 `napcat`。
+- 旧 `managementKind=napcat` 实例迁移为 `onebot11 + none`，保留稳定 ID、名称和显式业务/事件入口；清空管理地址并删除旧 NapCat 令牌，不把管理凭据转为业务凭据。
+- 迁移可重复执行，不影响其他实例、业务令牌和事件游标。迁移后不再请求 `/auth`、`/base`、`/Log`、`/QQLogin`、`/OB11Config` 等 NapCat 管理端点。
+- OneBot 标准调试只依赖实例业务 HTTP/WebSocket 入口；`onebot11 + nyarugram-admin-v1` 按服务端实际 `/admin/v1` 能力启用管理页面。
+- 配置 `values` 使用与 `config/schema` 的 `path` 对应的嵌套对象（例如 `values.runtime.sync_interval_seconds`）；秘密字段仍通过 `secrets[path]` 的 `keep|replace|clear` 操作更新。

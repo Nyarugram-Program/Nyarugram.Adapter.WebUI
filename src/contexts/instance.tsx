@@ -19,8 +19,6 @@ import {
 
 import { useAppDispatch, useAppSelector } from '@/hooks/use-store'
 
-import { cancelServerRequests } from '@/utils/request'
-
 import NyarugramAdminManager from '@/controllers/nyarugram_admin_manager'
 import type { AdapterInstance } from '@/types/instance'
 
@@ -60,7 +58,6 @@ export function InstanceProvider({ children }: { children: ReactNode }) {
   const lastInstanceKey = useRef(instanceKey(activeInstance))
 
   const invalidate = useCallback(() => {
-    cancelServerRequests()
     setGeneration((value) => value + 1)
   }, [])
 
@@ -70,7 +67,6 @@ export function InstanceProvider({ children }: { children: ReactNode }) {
         if (activeInstance) {
           NyarugramAdminManager.invalidateSession(activeInstance.id)
         }
-        cancelServerRequests()
         dispatch(setActiveInstance(instanceId))
       }
     },
@@ -98,7 +94,6 @@ export function InstanceProvider({ children }: { children: ReactNode }) {
   const deleteInstance = useCallback(
     (instanceId: string) => {
       NyarugramAdminManager.invalidateSession(instanceId)
-      cancelServerRequests()
       dispatch(removeInstance(instanceId))
     },
     [dispatch]
@@ -108,7 +103,6 @@ export function InstanceProvider({ children }: { children: ReactNode }) {
     const nextKey = instanceKey(activeInstance)
     if (nextKey !== lastInstanceKey.current) {
       lastInstanceKey.current = nextKey
-      cancelServerRequests()
       setGeneration((value) => value + 1)
     }
   }, [activeInstance])

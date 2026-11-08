@@ -6,7 +6,7 @@
 
 ## 已知基线
 
-当前前端来自 NapCat WebUI，采用 React、TypeScript、Vite、NextUI、Redux Toolkit、Monaco 和 xterm。现有 QQLogin、OB11Config、日志和认证接口依赖 NapCat。
+当前前端源自 NapCat WebUI，采用 React、TypeScript、Vite、NextUI、Redux Toolkit 和 Monaco。NapCat 专属管理客户端（QQLogin、OB11Config、管理日志和认证接口）已移除，只保留 OneBot V11、Milky 业务协议及 Nyarugram `/admin/v1`、仅协议调试两种管理模式。
 
 Nyarugram.Milky 已有业务 API、/event、/health 和 CLI 账号操作，统一 /admin/v1 管理接口尚未实现。Nyarugram.OnebotV11 当前为空仓库，不能宣称已经和它完成联调。
 
@@ -23,9 +23,9 @@ Nyarugram.Milky 真实媒体仍未完成。呼叫控制、Loopback 及自动化�
 
 ### 2. 拆分业务协议与管理模式
 
-- 支持 onebot11 和 milky 的业务协议选择，以及 napcat、nyarugram-admin-v1、none 三种管理模式。
-- 新建实例模型及实例选择，显式配置管理、业务 HTTP、事件入口。移除通过端口替换推断入口的逻辑。
-- 将全局 storeURL、token 和 OneBotConfig 的使用限制到对应实例与模式。
+- 支持 onebot11 和 milky 的业务协议选择，以及 nyarugram-admin-v1、none 两种管理模式。
+- 新建实例模型及实例选择，显式配置管理、业务 HTTP、事件入口。移除通过端口替换推断入口的逻辑，不提供 NapCat 管理入口。
+- 将旧 NapCat 实例迁移为 onebot11 + none：保留稳定 ID、名称和显式业务入口，清除管理地址、NapCat 令牌和登录标记，不把管理凭据转为业务凭据；迁移必须幂等。
 - 公共 UI 复用布局和表单，协议专属配置、API 目录、消息段与事件模型保持独立。
 - 切换实例、账号或页面时取消旧请求、连接及重连任务，验证迟到结果隔离。
 
@@ -35,7 +35,7 @@ Nyarugram.Milky 真实媒体仍未完成。呼叫控制、Loopback 及自动化�
 - 支持基础系统、用户、联系人、群、成员、发送、消息查询、历史及已读动作。
 - 使用固定 Milky schema，参数、响应和支持集合可校验。发送支持真实 text、可表达的 mention 和 reply。
 - 支持标准 SSE/WebSocket 事件及 Nyarugram epoch 确认扩展，正确 ACK、resume、去重、缺口显示和重连。
-- 保留 OneBot V11 HTTP/WS 调试、事件分类及原 NapCat 管理模式，执行回归。
+- 保留 OneBot V11 标准 HTTP/WS 调试和事件分类，执行回归；按标准协议提供服务的 NapCat 实例按普通 OneBot 实例使用，不调用其管理接口。
 - 没有实现的管理或业务功能明确展示状态，禁止伪造成功响应。
 
 ### 4. 实现统一管理面并联调
@@ -59,10 +59,10 @@ Nyarugram.Milky 真实媒体仍未完成。呼叫控制、Loopback 及自动化�
 
 - 完成类型检查、构建及针对协议、实例隔离、能力、认证、配置冲突、事件恢复和整数精度的自动化测试。
 - 在浏览器检查桌面和窄屏布局，执行真实 Milky 基础查询、私聊/群聊发送、事件接收和重连。
-- 验证原 OneBot/NapCat 路径，记录所用服务或替身版本。
+- 验证 OneBot 标准 HTTP/WebSocket 路径，记录所用服务或替身版本，并确认浏览器不发送 NapCat 专属管理请求。
 - 完成管理登录、真实账号登录、配置保存与生效、脱敏日志的真实服务联调。
 - 构建可独立部署静态产物，验证同源托管、SPA 路由和子路径。
-- 更新 README、支持矩阵、运行说明和交付报告，保留历史记录。输出产物路径、版本及 SHA-256。
+- 更新 README、支持矩阵、运行说明和交付报告，保留历史记录，并明确 NapCat 管理兼容的移除范围与迁移策略。输出产物路径、版本及 SHA-256。
 - 明确源码实现、自动化测试、浏览器测试、真实服务和媒体设备验证各自状态。
 
 ## 必测场景
@@ -75,5 +75,7 @@ Nyarugram.Milky 真实媒体仍未完成。呼叫控制、Loopback 及自动化�
 6. 没有管理 API 时仍可使用现有 Milky 业务调试，管理功能有明确不可用原因。
 7. 标准协议 ID 保持精度，未知事件和错误响应仍可查看原始内容。
 8. 默认加载页面不访问预置公网功能服务，不携带真实凭据到第三方目标。
+9. 新实例只有两种管理模式；旧 NapCat 实例迁移幂等，其他实例、业务令牌和事件游标不受影响。
+10. `/qq_login` 等已移除深链接有明确处理，浏览器不请求 NapCat 管理端点。
 
 最终回复逐项说明完成内容、代码位置、测试证据和剩余条件。正式部署、发布和数据迁移遵循已有明确授权。

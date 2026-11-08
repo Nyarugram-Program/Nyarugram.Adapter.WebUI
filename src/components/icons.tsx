@@ -23,7 +23,7 @@ export const Logo: React.FC<IconImageProps> = ({
   //   />
   // </svg>
   <img
-    alt="Napcat"
+    alt="Nyarugram Adapter WebUI"
     height={size || height}
     src={logo}
     width={size || height}

@@ -9,13 +9,13 @@ import { useNavigate } from 'react-router-dom'
 
 import useAuth from '@/hooks/auth'
 import useDialog from '@/hooks/use-dialog'
+import useInstance from '@/hooks/use-instance'
 import { useTheme } from '@/hooks/use-theme'
 
 import logo from '@/assets/images/logo.png'
 import type { MenuItem } from '@/config/site'
 
 import InstanceSwitcher from '../instance/switcher'
-
 import { title } from '../primitives'
 import Menus from './menus'
 
@@ -28,6 +28,7 @@ const SideBar: React.FC<SideBarProps> = (props) => {
   const { open, items } = props
   const { toggleTheme, isDark } = useTheme()
   const { revokeAuth } = useAuth()
+  const { instance } = useInstance()
   const navigate = useNavigate()
   const dialog = useDialog()
   const onRevokeAuth = () => {
@@ -86,16 +87,18 @@ const SideBar: React.FC<SideBarProps> = (props) => {
             >
               切换主题
             </Button>
-            <Button
-              className="w-full mb-2"
-              color="danger"
-              radius="full"
-              variant="light"
-              onPress={onRevokeAuth}
-              startContent={<IoMdLogOut size={16} />}
-            >
-              退出登录
-            </Button>
+            {instance?.managementKind === 'nyarugram-admin-v1' && (
+              <Button
+                className="w-full mb-2"
+                color="danger"
+                radius="full"
+                variant="light"
+                onPress={onRevokeAuth}
+                startContent={<IoMdLogOut size={16} />}
+              >
+                退出登录
+              </Button>
+            )}
           </div>
         </div>
       </motion.div>

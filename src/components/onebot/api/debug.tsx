@@ -3,7 +3,7 @@ import { Card, CardBody, CardHeader } from '@nextui-org/card'
 import { Input } from '@nextui-org/input'
 import { Snippet } from '@nextui-org/snippet'
 import { motion } from 'motion/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { IoLink, IoSend } from 'react-icons/io5'
 import { PiCatDuotone } from 'react-icons/pi'
@@ -13,6 +13,8 @@ import { OneBotHttpApiContent, OneBotHttpApiPath } from '@/const/ob_api'
 import ChatInputModal from '@/components/chat_input/modal'
 import CodeEditor from '@/components/code_editor'
 import PageLoading from '@/components/page_loading'
+
+import useInstance from '@/hooks/use-instance'
 
 import {
   getOneBotBusinessToken,
@@ -24,8 +26,6 @@ import { request } from '@/utils/request'
 import { parseAxiosResponse } from '@/utils/url'
 import { generateDefaultJson, parse } from '@/utils/zod'
 
-import useInstance from '@/hooks/use-instance'
-
 import DisplayStruct from './display_struct'
 
 export interface OneBotApiDebugProps {
@@ -35,7 +35,7 @@ export interface OneBotApiDebugProps {
 
 const OneBotApiDebug: React.FC<OneBotApiDebugProps> = (props) => {
   const { path, data } = props
-  const { instance } = useInstance()
+  const { instance, generation } = useInstance()
   const instanceId = instance?.id ?? ''
   const [httpConfig, setHttpConfig] = useState({
     url: instance?.businessUrl || getOneBotBusinessUrl(instanceId),
@@ -47,13 +47,22 @@ const OneBotApiDebug: React.FC<OneBotApiDebugProps> = (props) => {
   const [isResponseOpen, setIsResponseOpen] = useState(false)
   const [isFetching, setIsFetching] = useState(false)
   const parsedRequest = parse(data.request)
+  const requestAbortRef = useRef<AbortController | undefined>(undefined)
+  const contextRef = useRef({ instanceId, generation })
 
   useEffect(() => {
+    contextRef.current = { instanceId, generation }
+    requestAbortRef.current?.abort()
+    requestAbortRef.current = undefined
+    setIsFetching(false)
     setHttpConfig({
       url: instance?.businessUrl || getOneBotBusinessUrl(instanceId),
       token: getOneBotBusinessToken(instanceId)
     })
-  }, [instance?.businessUrl, instanceId])
+  }, [instance?.businessUrl, instanceId, generation])
+
+  useEffect(() => () => requestAbortRef.current?.abort(), [])
+
   const parsedResponse = parse(data.response)
 
   const sendRequest = async () => {
@@ -64,32 +73,51 @@ const OneBotApiDebug: React.FC<OneBotApiDebugProps> = (props) => {
     }
     setOneBotBusinessUrl(instanceId, httpConfig.url.trim())
     setOneBotBusinessToken(instanceId, httpConfig.token.trim())
+    let parsedRequestBody: unknown
+    try {
+      parsedRequestBody = JSON.parse(requestBody)
+    } catch {
+      toast.error('请求体 JSON 格式错误')
+      return
+    }
     setIsFetching(true)
+    requestAbortRef.current?.abort()
+    const controller = new AbortController()
+    requestAbortRef.current = controller
+    const requestContext = { instanceId, generation }
     const r = toast.loading('正在发送请求...')
     try {
-      const parsedRequestBody = JSON.parse(requestBody)
-      request
-        .post(httpConfig.url + path, parsedRequestBody, {
-          headers: {
-            Authorization: `Bearer ${httpConfig.token}`
-          },
-          responseType: 'text'
-        })
-        .then((res) => {
-          setResponseContent(parseAxiosResponse(res))
-          toast.success('请求发送完成，请查看响应')
-        })
-        .catch((err) => {
-          toast.error('请求发送失败：' + err.message)
-          setResponseContent(parseAxiosResponse(err.response))
-        })
-        .finally(() => {
-          setIsFetching(false)
-          toast.dismiss(r)
-        })
+      const res = await request.post(httpConfig.url + path, parsedRequestBody, {
+        headers: {
+          Authorization: `Bearer ${httpConfig.token}`
+        },
+        responseType: 'text',
+        signal: controller.signal
+      })
+      if (
+        controller.signal.aborted ||
+        contextRef.current.instanceId !== requestContext.instanceId ||
+        contextRef.current.generation !== requestContext.generation
+      ) {
+        return
+      }
+      setResponseContent(parseAxiosResponse(res))
+      toast.success('请求发送完成，请查看响应')
     } catch (error) {
-      toast.error('请求体 JSON 格式错误')
-      setIsFetching(false)
+      if (controller.signal.aborted) return
+      const axiosError = error as {
+        message: string
+        response?: Parameters<typeof parseAxiosResponse>[0]
+      }
+      toast.error('请求发送失败：' + axiosError.message)
+      if (axiosError.response) {
+        setResponseContent(parseAxiosResponse(axiosError.response))
+      }
+    } finally {
+      if (requestAbortRef.current === controller) {
+        requestAbortRef.current = undefined
+        setIsFetching(false)
+      }
       toast.dismiss(r)
     }
   }

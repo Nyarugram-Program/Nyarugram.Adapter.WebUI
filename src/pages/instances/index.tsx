@@ -19,6 +19,7 @@ import {
   type AdapterInstance,
   type ManagementKind,
   type ProtocolKind,
+  managementKinds,
   managementLabels,
   protocolLabels
 } from '@/types/instance'
@@ -90,19 +91,13 @@ export default function InstancesPage() {
 
   const validate = () => {
     if (!draft.name.trim()) return '请输入实例名称'
-    if (draft.managementKind === 'napcat' && draft.protocol !== 'onebot11') {
-      return 'NapCat 管理模式只适用于 OneBot V11 实例'
-    }
     if (
       draft.managementKind !== 'none' &&
       !isHttpUrl(normalizeUrl(draft.managementUrl))
     ) {
       return '请输入有效的管理地址'
     }
-    if (
-      (draft.protocol === 'milky' || draft.managementKind !== 'napcat') &&
-      !isHttpUrl(normalizeUrl(draft.businessUrl))
-    ) {
+    if (!isHttpUrl(normalizeUrl(draft.businessUrl))) {
       return '请输入有效的业务 HTTP 地址'
     }
     if (draft.protocol === 'milky' && !draft.eventUrl.trim()) {
@@ -211,6 +206,11 @@ export default function InstancesPage() {
             </Button>
           </CardHeader>
           <CardBody className="gap-3">
+            <div className="rounded-lg border border-default-200 bg-default-50 p-3 text-xs text-default-600 dark:bg-default-100 dark:text-default-300">
+              旧版 NapCat 管理实例会在首次打开时迁移为 OneBot V11 +
+              仅协议调试：保留实例 ID、名称和已填写的业务入口，清除 NapCat
+              管理地址与令牌。缺少业务地址的实例需要在此补充，本界面不会根据旧管理端口猜测地址。
+            </div>
             {instances.length === 0 && (
               <div className="rounded-lg border border-dashed border-default-300 p-4 text-default-500">
                 尚未登记实例。请先新增 OneBot V11 或 Milky 实例。
@@ -237,6 +237,17 @@ export default function InstancesPage() {
                         业务：{item.businessUrl}
                       </div>
                     )}
+                    {!item.businessUrl && (
+                      <div className="text-xs text-warning">
+                        业务地址未配置；请编辑补充后才能进行协议调试。
+                      </div>
+                    )}
+                    {item.managementKind === 'nyarugram-admin-v1' &&
+                      !item.managementUrl && (
+                        <div className="text-xs text-warning">
+                          管理地址未配置；该实例只能进入协议调试。
+                        </div>
+                      )}
                     {item.eventUrl && (
                       <div className="text-xs break-all text-default-500">
                         事件：{item.eventUrl}
@@ -312,21 +323,15 @@ export default function InstancesPage() {
                 label="管理模式"
                 selectedKeys={[draft.managementKind]}
                 onSelectionChange={(keys) => {
-                  const value = Array.from(keys)[0]
-                  if (
-                    value === 'napcat' ||
-                    value === 'nyarugram-admin-v1' ||
-                    value === 'none'
-                  ) {
-                    updateDraft('managementKind', value)
+                  const value = String(Array.from(keys)[0] ?? '')
+                  if (managementKinds.some((kind) => kind === value)) {
+                    updateDraft('managementKind', value as ManagementKind)
                   }
                 }}
               >
-                <SelectItem key="napcat">{managementLabels.napcat}</SelectItem>
-                <SelectItem key="nyarugram-admin-v1">
-                  {managementLabels['nyarugram-admin-v1']}
-                </SelectItem>
-                <SelectItem key="none">{managementLabels.none}</SelectItem>
+                {managementKinds.map((kind) => (
+                  <SelectItem key={kind}>{managementLabels[kind]}</SelectItem>
+                ))}
               </Select>
             </div>
             <Input
@@ -346,7 +351,11 @@ export default function InstancesPage() {
             )}
             <Input
               label="业务 HTTP 入口"
-              placeholder="例如 https://adapter.example"
+              placeholder={
+                draft.protocol === 'milky'
+                  ? '例如 https://adapter.example'
+                  : '例如 https://onebot.example（OneBot HTTP 服务）'
+              }
               value={draft.businessUrl}
               onChange={(event) =>
                 updateDraft('businessUrl', event.target.value)

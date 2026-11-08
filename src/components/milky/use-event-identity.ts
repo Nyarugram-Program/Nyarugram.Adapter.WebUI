@@ -228,16 +228,6 @@ export function useEventIdentity(input: {
           setState({ status: 'ready', account: resolved, token })
           return
         }
-
-        if (!disposed) {
-          setState({
-            status: 'error',
-            reason:
-              'NapCat 管理模式没有 Milky 事件账号身份，不能建立可靠的消费作用域。',
-            retryable: false,
-            attempt: attemptRef.current
-          })
-        }
       } catch (error) {
         if (disposed || controller.signal.aborted) return
         fail(classifyIdentityError(error))
